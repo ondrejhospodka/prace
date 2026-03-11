@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fyzika: Mechanická práce (Interaktivní test)</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #0ea5e9; --bg: #f8fafc; --card: #ffffff;
+            --text: #0f172a; --correct: #16a34a; --wrong: #dc2626;
+            --hover: #f0f9ff;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg);
+            color: var(--text); margin: 0; padding: 20px;
+            display: flex; justify-content: center; min-height: 100vh;
+        }
+        .container {
+            background: var(--card); padding: 30px; border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 800px; width: 100%;
+        }
+        
+        .medals-container {
+            display: flex; justify-content: center; gap: 10px; margin-bottom: 25px;
+            padding: 15px; background: #f1f5f9; border-radius: 12px; flex-wrap: wrap;
+        }
+        .medal { font-size: 2rem; filter: grayscale(100%); opacity: 0.3; transition: all 0.5s ease; }
+        .medal.won { filter: grayscale(0%); opacity: 1; transform: scale(1.1); }
+
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold; color: var(--primary); font-size: 1.2rem;}
+        .question-box { font-size: 1.4rem; text-align: center; margin-bottom: 30px; padding: 20px; background: var(--bg); border-radius: 12px; border-left: 5px solid var(--primary); }
+        
+        /* Styly pro různé typy úloh */
+        .options { display: grid; gap: 12px; }
+        .option-btn { background: white; border: 2px solid #cbd5e1; padding: 15px; font-size: 1.2rem; border-radius: 12px; cursor: pointer; text-align: left; transition: 0.2s; }
+        .option-btn:hover:not(:disabled) { background: var(--hover); border-color: var(--primary); }
+        .option-btn.correct { background: #dcfce7; border-color: var(--correct); color: var(--correct); }
+        .option-btn.wrong { background: #fee2e2; border-color: var(--wrong); color: var(--wrong); }
+        .option-btn:disabled { cursor: not-allowed; }
+        
+        .multi-option { display: flex; align-items: center; background: white; border: 2px solid #cbd5e1; padding: 15px; font-size: 1.2rem; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        .multi-option:hover { background: var(--hover); border-color: var(--primary); }
+        .multi-option input { transform: scale(1.5); margin-right: 15px; cursor: pointer; }
+        .multi-option.correct-multi { background: #dcfce7; border-color: var(--correct); }
+        .multi-option.wrong-multi { background: #fee2e2; border-color: var(--wrong); }
+
+        /* Styly pro "Drag & Drop" (Tap & Place) */
+        .match-container { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        .slots-row, .items-row { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .slot-box { width: 140px; min-height: 80px; border: 2px dashed #94a3b8; border-radius: 8px; display: flex; flex-direction: column; align-items: center; padding: 10px; background: #f8fafc; }
+        .slot-title { font-weight: bold; font-size: 1.5rem; margin-bottom: 5px; color: var(--primary); }
+        .match-item { background: white; border: 2px solid #cbd5e1; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: 0.2s; }
+        .match-item.selected { border-color: var(--primary); background: #e0f2fe; transform: scale(1.05); }
+        .match-item.placed { margin-top: auto; border-color: var(--primary); background: white; }
+
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 15px 30px; font-size: 1.2rem; border-radius: 8px; cursor: pointer; display: none; margin-top: 20px; width: 100%; font-weight: bold; }
+        .btn-primary:hover { background: #0284c7; }
+        
+        .feedback-msg { text-align: center; font-size: 1.5rem; font-weight: bold; margin-top: 20px; display: none; padding: 15px; border-radius: 8px; }
+        .feedback-msg.success { background: #dcfce7; color: var(--correct); }
+        .feedback-msg.error { background: #fee2e2; color: var(--wrong); }
+
+        #solution-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+        .modal-content { background: white; padding: 30px; border-radius: 16px; max-width: 850px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .step-box { background: #f8fafc; border-left: 4px solid var(--primary); padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0; display: none; }
+        .step-title { font-weight: bold; margin-bottom: 10px; color: var(--primary); }
+        
+        .error-reflection-box { background: #fef08a; border-left: 4px solid #eab308; padding: 20px; margin-top: 20px; border-radius: 0 8px 8px 0; display: none; }
+        .error-reflection-box h3 { margin-top: 0; color: #854d0e; }
+        .error-option { display: block; margin-bottom: 12px; font-size: 1.1rem; cursor: pointer; }
+        .error-option input { transform: scale(1.5); margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app">
+    <div id="quiz-screen">
+        <div class="medals-container" id="medals-container"></div>
+        <div class="header">
+            <span>Úloha <span id="current-q">1</span>/<span id="total-q">8</span></span>
+            <span>Úspěšnost: <span id="current-percent">0</span> %</span>
+        </div>
+        <div class="question-box" id="question-text"></div>
+        
+        <div id="interactive-container"></div>
+        
+        <div id="feedback-message" class="feedback-msg"></div>
+        
+        <button class="btn-primary" id="check-btn" onclick="verifyAnswer()">Zkontrolovat</button>
+        <button class="btn-primary" id="next-btn" onclick="nextQuestion()">Pokračovat na další úlohu</button>
+    </div>
+
+    <div id="result-screen" style="display: none; text-align: center;">
+        <h1 style="color: var(--primary); font-size: 3rem; margin-bottom: 10px;">Hotovo!</h1>
+        <h2 style="font-size: 2rem;">Tvá celková úspěšnost: <span id="final-percent"></span> %</h2>
+        <div id="diagnostic-feedback" style="background: #f1f5f9; padding: 20px; border-radius: 12px; margin: 30px 0; font-size: 1.2rem; text-align: left; line-height: 1.6;"></div>
+        <button class="btn-primary" style="display:inline-block;" onclick="location.reload()">Spustit test znovu</button>
+    </div>
+</div>
+
+<div id="solution-modal">
+    <div class="modal-content">
+        <h2 style="margin-top:0;">Fyzikální rozbor situace</h2>
+        <div id="steps-container"></div>
+        <button class="btn-primary" id="step-btn" style="display:block;" onclick="showNextStep()">Další krok řešení</button>
+        
+        <div class="error-reflection-box" id="error-reflection">
+            <h3>Kde se stala chyba?</h3>
+            <label class="error-option"><input type="radio" name="errorType" value="teorie"> Nepochopení teorie a vzorců</label>
+            <label class="error-option"><input type="radio" name="errorType" value="jednotky"> Špatný převod jednotek</label>
+            <label class="error-option"><input type="radio" name="errorType" value="sily"> Neschopnost určit, která síla koná práci</label>
+            <label class="error-option"><input type="radio" name="errorType" value="uhel"> Problém s úhlem a goniometrií</label>
+            <label class="error-option"><input type="radio" name="errorType" value="nahoda"> Jen jsem tipoval/a</label>
+            <button class="btn-primary" style="display:block; margin-top: 20px;" onclick="closeModalAndSaveError()">Uložit a zavřít řešení</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const successMsgs = ["Jsi megahustý fyzikář! 🚀", "Paráda, to bylo bezchybné! ⭐", "Skvělá práce, válíš! 🔥", "Tohle máš v malíčku! 💡"];
+    const failMsgs = ["Nevadí, příště to dáš! 💪", "Chybička se vloudila, mrkni na postup. 🧐", "Žádný učený z nebe nespadl, koukni na řešení. 📚", "Těsně vedle, ale oprava tě posune dál. 🔧"];
+
+    const questions = [
+        {   // 1. Přiřazování
+            type: "match",
+            q: "Přiřaď správný název a jednotku ke každému symbolu ze vzorce pro mechanickou práci: <br><br> \\( W = F \\cdot s \\cdot \\cos \\alpha \\)",
+            slots: ["W", "F", "s", "\\alpha"],
+            items: ["Práce (J)", "Dráha (m)", "Síla (N)", "Úhel (°)"],
+            answer: [0, 2, 1, 3], // index of correct item for each slot
+            steps: [
+                { title: "Oprava", content: "W = Práce (Joule), F = Síla (Newton), s = Dráha/posunutí (metr), \\( \\alpha \\) = Úhel (°)." }
+            ]
+        },
+        {   // 2. Převod - hmotnost
+            type: "single",
+            q: "Jak správně převedeš hmotnost m = 450 mg na základní jednotku do vzorce?",
+            options: ["4,5 kg", "0,45 kg", "0,0045 kg", "0,00045 kg"],
+            answer: 3,
+            steps: [
+                { title: "Krok 1", content: "Základní jednotkou hmotnosti je kilogram (kg)." },
+                { title: "Krok 2", content: "Miligram je tisícina gramu a gram je tisícina kilogramu. Posouváme desetinnou čárku o 6 míst doleva: 450 / 1 000 000 = 0,00045 kg." }
+            ]
+        },
+        {   // 3. Převod - délka
+            type: "single",
+            q: "Při výpočtu potřebujeme dráhu s = 125 cm. Kolik to je v základních jednotkách?",
+            options: ["0,125 m", "1,25 m", "12,5 m", "1250 m"],
+            answer: 1,
+            steps: [
+                { title: "Krok 1", content: "Základní jednotkou délky je metr (m)." },
+                { title: "Krok 2", content: "Předpona 'centi' znamená setinu. Dělíme tedy stem: 125 / 100 = 1,25 m." }
+            ]
+        },
+        {   // 4. Převod - síla
+            type: "single",
+            q: "Tažná síla lokomotivy je F = 15 kN. Jaká hodnota se dosadí do vzorce?",
+            options: ["1,5 N", "150 N", "1500 N", "15 000 N"],
+            answer: 3,
+            steps: [
+                { title: "Krok 1", content: "Základní jednotkou síly je Newton (N)." },
+                { title: "Krok 2", content: "Předpona 'kilo' (k) znamená tisíc (stejně jako u kilometrů). Násobíme tedy tisícem: 15 * 1000 = 15 000 N." }
+            ]
+        },
+        {   // 5. Vícenásobný výběr
+            type: "multi",
+            q: "Vyber VŠECHNY situace, ve kterých se z fyzikálního hlediska KONÁ mechanická práce (pozor, je zde více správných odpovědí!):",
+            options: [
+                "Člověk tlačí skříň po zemi.",
+                "Zvedání kýble s vodou.",
+                "Kůň táhne vůz rovnoměrně po silnici.",
+                "Vesmírná loď letí rovnoměrně vesmírem.",
+                "Člověk drží těžký kbelík a čeká na zastávce.",
+                "Člověk nese kbelík s barvou a jde vodorovně po podlaze."
+            ],
+            answer: [0, 1, 2], // indexy správných odpovědí
+            steps: [
+                { title: "Krok 1: Kdy se práce NEKONÁ", content: "Vesmírem letí loď setrvačností (nepůsobí síla). Zastávka: nulová dráha. Nesený kbelík vodorovně: síla míří nahoru, pohyb dopředu, úhel je 90° a \\( \\cos 90^\\circ = 0 \\)." },
+                { title: "Krok 2: Kdy se práce KONÁ", content: "Tlačení skříně (síla i pohyb vpřed), zvedání (síla i pohyb vzhůru), kůň táhnoucí vůz (síla koně táhne vůz ve směru jízdy proti tření)." }
+            ]
+        },
+        {   // 6. Slovní úloha 1 (Zvedání)
+            type: "single",
+            q: "Vypočti práci, kterou vykonáš při zvednutí kýble s vodou (hmotnost 7 kg) do výšky 75 cm nad zemí.",
+            options: ["5,25 J", "52,5 J", "525 J", "0 J"],
+            answer: 1,
+            steps: [
+                { title: "Krok 1: Analýza sil", content: " <br><br>Překonáváš tíhovou sílu \\( F_G = m \\cdot g \\). Počítáme s \\( g = 10 \\, \\text{m/s}^2 \\)." },
+                { title: "Krok 2: Výpočet", content: "Převod: 75 cm = 0,75 m.<br> \\( W = (m \\cdot g) \\cdot s = 7 \\cdot 10 \\cdot 0,75 = 52,5 \\, \\text{J} \\)." }
+            ]
+        },
+        {   // 7. Slovní úloha 2 (Tření)
+            type: "single",
+            q: "Jakou minimální práci vykonáme při přemístění bedny o hmotnosti 50 kg po podlaze o vzdálenost 5 m? Koeficient tření f = 0,5.",
+            options: ["250 J", "125 J", "1250 J", "2500 J"],
+            answer: 2,
+            steps: [
+                { title: "Krok 1: Která síla pracuje?", content: " <br><br>Musíme táhnout silou stejnou, jakou působí tření proti nám. \\( F = F_t \\)." },
+                { title: "Krok 2: Výpočet třecí síly", content: "\\( F_t = f \\cdot m \\cdot g = 0,5 \\cdot 50 \\cdot 10 = 250 \\, \\text{N} \\)." },
+                { title: "Krok 3: Výpočet práce", content: "\\( W = F \\cdot s = 250 \\cdot 5 = 1250 \\, \\text{J} \\)." }
+            ]
+        },
+        {   // 8. Slovní úloha 3 (Úhel)
+            type: "single",
+            q: "Při přemístění bedny do vzdálenosti 30 m byla vykonána práce 2100 J. Tahali jsme za provaz, který svíral s vodorovnou podlahou úhel 30°. Jak velkou silou jsme tahali?",
+            options: ["70,0 N", "60,6 N", "80,8 N", "121,2 N"],
+            answer: 2,
+            steps: [
+                { title: "Krok 1: Složky síly", content: " <br><br>Protože taháme šikmo, musíme zapojit do vzorce kosinus úhlu: \\( W = F \\cdot s \\cdot \\cos \\alpha \\)." },
+                { title: "Krok 2: Vyjádření neznámé a výpočet", content: "Vyjádříme sílu: \\( F = \\frac{W}{s \\cdot \\cos \\alpha} \\).<br> Dosadíme: \\( F = \\frac{2100}{30 \\cdot \\cos 30^\\circ} \\approx \\frac{2100}{30 \\cdot 0,866} \\approx 80,8 \\, \\text{N} \\)." }
+            ]
+        }
+    ];
+
+    let currentQuestionIndex = 0; let score = 0; let currentStepIndex = 0;
+    let errorStats = { teorie: 0, jednotky: 0, sily: 0, uhel: 0, nahoda: 0 };
+    
+    // Proměnné pro Tap & Place
+    let selectedItem = null;
+    let userMatches = [];
+
+    function initGame() {
+        document.getElementById('total-q').innerText = questions.length;
+        const medalsDiv = document.getElementById('medals-container');
+        for(let i=0; i<questions.length; i++){
+            const medal = document.createElement('span');
+            medal.className = 'medal'; medal.innerText = '🏆'; medal.id = 'medal-' + i;
+            medalsDiv.appendChild(medal);
+        }
+        renderMath();
+    }
+
+    function updatePercent() {
+        document.getElementById('current-percent').innerText = Math.round((score / questions.length) * 100);
+    }
+
+    function renderMath() {
+        const qText = document.getElementById('question-text');
+        const container = document.getElementById('interactive-container');
+        const q = questions[currentQuestionIndex];
+        
+        qText.innerHTML = q.q; 
+        container.innerHTML = '';
+        document.getElementById('check-btn').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('feedback-message').style.display = 'none';
+
+        if(q.type === 'single') {
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn'; btn.innerHTML = opt;
+                btn.onclick = () => verifySingle(index, btn);
+                optionsDiv.appendChild(btn);
+            });
+            container.appendChild(optionsDiv);
+            
+        } else if(q.type === 'multi') {
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+            q.options.forEach((opt, index) => {
+                const label = document.createElement('label');
+                label.className = 'multi-option';
+                label.innerHTML = `<input type="checkbox" value="${index}"> ${opt}`;
+                label.onclick = () => { document.getElementById('check-btn').style.display = 'block'; };
+                optionsDiv.appendChild(label);
+            });
+            container.appendChild(optionsDiv);
+            
+        } else if(q.type === 'match') {
+            userMatches = new Array(q.slots.length).fill(null);
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'match-container';
+            
+            const slotsRow = document.createElement('div');
+            slotsRow.className = 'slots-row';
+            q.slots.forEach((slot, index) => {
+                const sBox = document.createElement('div');
+                sBox.className = 'slot-box';
+                sBox.innerHTML = `<div class="slot-title">\\(${slot}\\)</div><div class="drop-zone" id="slot-${index}"></div>`;
+                sBox.onclick = () => placeItem(index);
+                slotsRow.appendChild(sBox);
+            });
+            
+            const itemsRow = document.createElement('div');
+            itemsRow.className = 'items-row';
+            q.items.forEach((item, index) => {
+                const iBox = document.createElement('div');
+                iBox.className = 'match-item';
+                iBox.innerHTML = item;
+                iBox.id = `item-${index}`;
+                iBox.onclick = () => selectItem(index, iBox);
+                itemsRow.appendChild(iBox);
+            });
+            
+            matchDiv.appendChild(slotsRow);
+            matchDiv.appendChild(itemsRow);
+            container.appendChild(matchDiv);
+            
+            const hint = document.createElement('p');
+            hint.innerHTML = "<em>Návod pro tablety: Ťukni na štítek dole a následně ťukni do prázdného políčka pod symbolem.</em>";
+            hint.style.fontSize = "0.9rem";
+            container.appendChild(hint);
+        }
+
+        renderMathInElement(container, { delimiters: [{left: '\\(', right: '\\)', display: false}] });
+        renderMathInElement(qText, { delimiters: [{left: '\\(', right: '\\)', display: false}] });
+        document.getElementById('current-q').innerText = currentQuestionIndex + 1;
+    }
+
+    /* Funkce pro Tap & Place (nahrazuje problémový Drag&Drop) */
+    function selectItem(index, element) {
+        if(element.classList.contains('placed')) return;
+        document.querySelectorAll('.match-item').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        selectedItem = { index: index, el: element };
+    }
+
+    function placeItem(slotIndex) {
+        if(!selectedItem) return;
+        
+        // Pokud v políčku už něco je, vrátíme to zpět dolu
+        if(userMatches[slotIndex] !== null) {
+            const oldItemIndex = userMatches[slotIndex];
+            const oldItemEl = document.getElementById(`item-${oldItemIndex}`);
+            oldItemEl.classList.remove('placed');
+            oldItemEl.style.display = 'block';
+            document.querySelector('.items-row').appendChild(oldItemEl);
+        }
+        
+        const dropZone = document.getElementById(`slot-${slotIndex}`);
+        dropZone.innerHTML = '';
+        dropZone.appendChild(selectedItem.el);
+        selectedItem.el.classList.remove('selected');
+        selectedItem.el.classList.add('placed');
+        
+        userMatches[slotIndex] = selectedItem.index;
+        selectedItem = null;
+        
+        // Zobrazení tlačítka kontroly
+        if(!userMatches.includes(null)) {
+            document.getElementById('check-btn').style.display = 'block';
+        }
+    }
+
+    function showFeedback(isCorrect) {
+        const msgBox = document.getElementById('feedback-message');
+        msgBox.style.display = 'block';
+        if(isCorrect) {
+            msgBox.className = 'feedback-msg success';
+            msgBox.innerText = successMsgs[Math.floor(Math.random() * successMsgs.length)];
+        } else {
+            msgBox.className = 'feedback-msg error';
+            msgBox.innerText = failMsgs[Math.floor(Math.random() * failMsgs.length)];
+        }
+    }
+
+    /* Ověření Single Choice */
+    function verifySingle(selectedIndex, btnElement) {
+        const q = questions[currentQuestionIndex];
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(btn => btn.disabled = true);
+
+        if (selectedIndex === q.answer) {
+            btnElement.classList.add('correct');
+            handleSuccess();
+        } else {
+            btnElement.classList.add('wrong');
+            buttons[q.answer].classList.add('correct');
+            handleFail();
+        }
+    }
+
+    /* Společné ověření pro Multi a Match přes tlačítko */
+    function verifyAnswer() {
+        const q = questions[currentQuestionIndex];
+        document.getElementById('check-btn').style.display = 'none';
+        
+        if(q.type === 'multi') {
+            const checkboxes = document.querySelectorAll('.multi-option input');
+            let userAns = [];
+            checkboxes.forEach(cb => {
+                if(cb.checked) userAns.push(parseInt(cb.value));
+                cb.disabled = true;
+            });
+            
+            let isCorrect = (userAns.length === q.answer.length) && userAns.every(val => q.answer.includes(val));
+            
+            document.querySelectorAll('.multi-option').forEach((label, i) => {
+                if(q.answer.includes(i)) label.classList.add('correct-multi');
+                else if(userAns.includes(i) && !q.answer.includes(i)) label.classList.add('wrong-multi');
+            });
+
+            if(isCorrect) handleSuccess(); else handleFail();
+            
+        } else if(q.type === 'match') {
+            let isCorrect = true;
+            userMatches.forEach((ans, i) => {
+                const slotBox = document.getElementById(`slot-${i}`).parentElement;
+                if(ans === q.answer[i]) {
+                    slotBox.style.borderColor = "var(--correct)";
+                } else {
+                    slotBox.style.borderColor = "var(--wrong)";
+                    isCorrect = false;
+                }
+            });
+            if(isCorrect) handleSuccess(); else handleFail();
+        }
+    }
+
+    function handleSuccess() {
+        document.getElementById(`medal-${currentQuestionIndex}`).classList.add('won');
+        score++; updatePercent();
+        showFeedback(true);
+        document.getElementById('next-btn').style.display = 'block';
+    }
+
+    function handleFail() {
+        showFeedback(false);
+        setTimeout(openSolution, 1500); // Necháme studenta přečíst hlášku a po 1.5s otevřeme řešení
+    }
+
+    function openSolution() {
+        document.getElementById('solution-modal').style.display = 'flex';
+        document.getElementById('steps-container').innerHTML = '';
+        currentStepIndex = 0;
+        document.getElementById('step-btn').style.display = 'block';
+        document.getElementById('error-reflection').style.display = 'none';
+        showNextStep();
+    }
+
+    function showNextStep() {
+        const stepsData = questions[currentQuestionIndex].steps;
+        if (currentStepIndex < stepsData.length) {
+            const step = stepsData[currentStepIndex];
+            const stepDiv = document.createElement('div');
+            stepDiv.className = 'step-box';
+            stepDiv.innerHTML = `<div class="step-title">${step.title}</div><div>${step.content}</div>`;
+            document.getElementById('steps-container').appendChild(stepDiv);
+            stepDiv.style.display = 'block';
+            
+            renderMathInElement(stepDiv, { delimiters: [{left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}] });
+
+            currentStepIndex++;
+            if (currentStepIndex >= stepsData.length) {
+                document.getElementById('step-btn').style.display = 'none';
+                document.getElementById('error-reflection').style.display = 'block';
+            }
+        }
+    }
+
+    function closeModalAndSaveError() {
+        const selectedError = document.querySelector('input[name="errorType"]:checked');
+        if (selectedError) { errorStats[selectedError.value]++; } 
+        else { alert("Zaškrtni prosím, kde jsi udělal/a chybu."); return; }
+        document.getElementById('solution-modal').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'block';
+    }
+
+    function generateDiagnosticFeedback() {
+        let maxErrorCategory = Object.keys(errorStats).reduce((a, b) => errorStats[a] > errorStats[b] ? a : b);
+        let maxErrors = errorStats[maxErrorCategory];
+        let percent = Math.round((score / questions.length) * 100);
+        let html = '';
+
+        if (percent === 100) {
+            html += "<strong>Fyzikální expert!</strong> Zvládl/a jsi teorii i výpočty bez jediné chyby. U písemky nebudeš mít problém.";
+        } else if (maxErrors === 0) {
+             html += "Skvělá práce! Drobné zaváhání, ale fyzikální intuici máš výbornou.";
+        } else {
+            html += "<strong>Na co si dát příště pozor:</strong><br>";
+            if (maxErrorCategory === 'teorie') {
+                html += "Základní pojmy. Pamatuj, že fyzikální práce se koná jen tehdy, když síla posouvá těleso. Stání na místě s těžkou taškou není mechanická práce!";
+            } else if (maxErrorCategory === 'jednotky') {
+                html += "Kamenem úrazu jsou u tebe převody jednotek. Do vzorců musíš dosazovat kilogramy (kg), metry (m) a Newtony (N). Dej si na to u testu velký pozor.";
+            } else if (maxErrorCategory === 'sily') {
+                html += "Máš problém určit, KTERÁ síla koná práci. Při zvedání překonáváš tíhovou sílu. Při tažení po podlaze překonáváš třecí sílu. Vždy si nakresli obrázek!";
+            } else if (maxErrorCategory === 'uhel') {
+                html += "Goniometrie! Pokud síla nepůsobí přesně ve směru pohybu (taháš za provaz šikmo), musíš do vzorce přidat \\( \\cos \\alpha \\).";
+            } else {
+                html += "Často tipuješ. U fyziky je lepší si načrtnout obrázek, vyznačit si síly a teprve pak vybírat odpověď.";
+            }
+        }
+        document.getElementById('diagnostic-feedback').innerHTML = html;
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.length) { renderMath(); } 
+        else {
+            document.getElementById('quiz-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'block';
+            document.getElementById('final-percent').innerText = Math.round((score / questions.length) * 100);
+            generateDiagnosticFeedback();
+        }
+    }
+
+    window.onload = () => { setTimeout(initGame, 150); };
+</script>
+</body>
+</html>
